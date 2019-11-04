@@ -72,7 +72,7 @@ let rec parser_for_type = (schema, loc, type_ref) => {
   | Ntr_list(x) =>
     let child_parser = parser_for_type(schema, loc, x);
     [@metaloc conv_loc(loc)]
-    [%expr (v => Js.Json.array(Js.Array.map([%e child_parser], v)))];
+    [%expr (v => Some(Js.Json.array(Js.Array.map([%e child_parser], v))))];
   | Ntr_nullable(x) =>
     let child_parser = parser_for_type(schema, loc, x);
     [@metaloc conv_loc(loc)]
@@ -80,8 +80,9 @@ let rec parser_for_type = (schema, loc, type_ref) => {
       (
         v =>
           switch (v) {
-          | None => Js.Json.null
-          | Some(v) => [%e child_parser](v)
+          | None => None
+          | Some(None) => Some(Js.Json.null)
+          | Some(Some(v)) => Some([%e child_parser](v))
           }
       )
     ];
@@ -90,28 +91,30 @@ let rec parser_for_type = (schema, loc, type_ref) => {
     | None => raise_inconsistent_schema(type_name)
     | Some(Scalar({sm_name: "String", _}))
     | Some(Scalar({sm_name: "ID", _})) =>
-      %expr
-      Js.Json.string
+      [%expr v => Some(Js.Json.string(v))]
     | Some(Scalar({sm_name: "Int", _})) =>
-      %expr
-      (v => Js.Json.number(float_of_int(v)))
+      [%expr v => Some(Js.Json.number(float_of_int(v)))]
     | Some(Scalar({sm_name: "Float", _})) =>
-      %expr
-      Js.Json.number
+      [%expr v=> Some(Js.Json.number(v))]
     | Some(Scalar({sm_name: "Boolean", _})) =>
-      %expr
-      Js.Json.boolean
+      [%expr v => Some(Js.Json.boolean(v))]
     | Some(Scalar(_)) =>
-      %expr
-      (v => v)
+      [%expr v => Some(v)]
     | Some(ty) =>
-      function_name_string(ty) |> ident_from_string(conv_loc(loc))
+      function_name_string(ty) |> ident_from_string(conv_loc(loc)) |> [%expr v => Some(v)]
     }
   };
 };
 
-let filter_out_null_values = [%expr
-  Js.Array.filter(((_, value)) => value != Js.Json.null)
+let filter_out_optional_values = [%expr
+  Js.Array.reduce(
+    (acc, (key, value)) =>
+      switch (value) {
+      | None => acc
+      | Some(value) => Js.Array.concat(acc, [|(key, value)|])
+      },
+    [||],
+  )
 ];
 
 let json_of_fields = (schema, loc, expr, fields) => {
@@ -134,11 +137,12 @@ let json_of_fields = (schema, loc, expr, fields) => {
            )
          ];
        });
+
   let field_array = Ast_helper.Exp.array(field_array_exprs);
   [@metaloc conv_loc(loc)]
   [%expr
     Js.Json.object_(
-      [%e field_array] |> [%e filter_out_null_values] |> Js.Dict.fromArray,
+      [%e field_array] |> [%e filter_out_optional_values] |> Js.Dict.fromArray,
     )
   ];
 };

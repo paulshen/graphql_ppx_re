@@ -93,7 +93,7 @@ let rewrite_query = (loc, delim, query) => {
         Generator_utils.map_loc: add_loc(delimLength, loc),
         delimiter: delim,
         full_document: document,
-        /*  the only call site of schema, make it lazy! */
+        /* the only call site of schema, make it lazy! */
         schema: Lazy.force(Read_schema.get_schema()),
       };
       switch (Validations.run_validators(config, document)) {
@@ -109,7 +109,8 @@ let rewrite_query = (loc, delim, query) => {
           ),
         )
       | None =>
-        Result_decoder.unify_document_schema(config, document)
+        document
+        |> Result_decoder.unify_document_schema(config)
         |> Output_bucklescript_module.generate_modules(config)
       };
     };

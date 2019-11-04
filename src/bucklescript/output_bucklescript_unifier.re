@@ -120,7 +120,7 @@ let make_make_fun = (config, variable_defs) => {
       [%expr
         Js.Json.object_(
           [%e make_var_ctor(item)]
-          |> [%e Output_bucklescript_encoder.filter_out_null_values]
+          |> [%e Output_bucklescript_encoder.filter_out_optional_values]
           |> Js.Dict.fromArray,
         )
       ];

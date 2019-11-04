@@ -201,10 +201,13 @@ let generate_default_operation =
              )
           |> Array.to_list;
         },
-        [
-          [%stri let make = [%e make_fn]],
-          [%stri let makeWithVariables = [%e make_with_variables_fn]],
-        ],
+        List.concat([
+          [
+            [%stri let make = [%e make_fn]],
+            [%stri let makeWithVariables = [%e make_with_variables_fn]],
+          ],
+          [],
+        ]),
       ]),
       ret_type_magic,
     ]);
