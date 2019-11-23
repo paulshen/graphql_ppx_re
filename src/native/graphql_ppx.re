@@ -5,6 +5,17 @@ open Output_native_utils;
 
 let argv = Sys.argv |> Array.to_list;
 
+let is_prefixed = (prefix, str) => {
+  let i = 0;
+  let len = String.length(prefix);
+  let j = ref(0);
+  while (j^ < len
+         && String.unsafe_get(prefix, j^) == String.unsafe_get(str, i + j^)) {
+    incr(j);
+  };
+  j^ == len;
+};
+
 let add_pos = (delimLength, base, pos) => {
   pos_fname: base.pos_fname,
   pos_lnum: base.pos_lnum + pos.line,
@@ -142,32 +153,33 @@ let mapper = (_config, _cookies) => {
   let () =
     Ppx_config.(
       set_config({
-        verbose_logging: false,
-        // switch (List.find((==)("-verbose"), argv)) {
-        // | _ => true
-        // | exception Not_found => false
-        // },
-        output_mode: Ppx_config.String,
-        // switch (List.find((==)("-ast-out"), argv)) {
-        // | _ => Ppx_config.Apollo_AST
-        // | exception Not_found =>
-        // },
-        verbose_error_handling:
-          switch (Sys.getenv("NODE_ENV")) {
-          | "production" => false
+        verbose_logging: switch (List.find((==)("-verbose"), argv)) {
           | _ => true
-          | exception Not_found => true
+          | exception Not_found => false
+          },
+        output_mode: switch (List.find((==)("-ast-out"), argv)) {
+          | _ => Ppx_config.Apollo_AST
+          | exception Not_found => Ppx_config.String
+          },
+        verbose_error_handling:
+          switch (List.find((==)("-o"), argv)) {
+            | _ => false
+            | exception Not_found =>
+              switch (Sys.getenv("NODE_ENV")) {
+              | "production" => false
+              | _ => true
+              | exception Not_found => true
+              }
           },
         apollo_mode:
-          switch (Sys.getenv("GRAPHQL_PPX_APOLLO_MODE")) {
-          | "true" => true
-          | _ => false
+          switch (List.find((==)("-apollo-mode"), argv)) {
+          | _ => true
           | exception Not_found => false
           },
         root_directory: Sys.getcwd(),
         schema_file:
-          switch (Sys.getenv("GRAPHQL_PPX_SCHEMA")) {
-          | arg => arg
+          switch (List.find(is_prefixed("-schema="), argv)) {
+          | arg => arg |> drop_prefix("-schema=")
           | exception Not_found => "graphql_schema.json"
           },
         raise_error_with_loc: (loc, message) => {
