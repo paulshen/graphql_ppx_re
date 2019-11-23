@@ -23,6 +23,7 @@ Second, add it to `ppx-flags` in your `bsconfig.json`:
 ```
 
 If you're using bs-platform 6.x, add this to `bsconfig.json` instead:
+
 ```json
 "ppx-flags": ["@baransu/graphql_ppx_re/ppx6"]
 ```
@@ -254,14 +255,16 @@ type resultType = MyQuery.t;
 
 # Troubleshooting
 
-### "Type ... doesn't have any fields" 
+### "Type ... doesn't have any fields"
 
+Sometimes when working with union types you'll get the following error.
 
-Sometimes when working with union types you'll get the following error. 
 ```
 Fatal error: exception Graphql_ppx_base__Schema.Invalid_type("Type IssueTimelineItems doesn't have any fields")
 ```
+
 This is an example of a query that will result in such error:
+
 ```graphql
 nodes {
   __typename
@@ -276,10 +279,12 @@ nodes {
   }
 }
 ```
+
 This is because we allow querying union fields only in certain cases. GraphQL provides the `__typename` field but it's not present in GraphQL introspection query thus `graphql_ppx_re` doesn't know that this field exists.
 To fix your query simply remove `__typename`. It's added behinds a scene as an implementation detail and serves us as a way to decide which case to select when parsing your query result.
 
 This is an example of a correct query:
+
 ```graphql
 nodes {
   ... on ClosedEvent {
@@ -295,15 +300,23 @@ nodes {
 
 # Configuration
 
-If you need customize certain features of `graphql_ppx_re` you can provide environment variables do so:
+If you need customize certain features of `graphql_ppx_re` you can provide arguments to in `ppx-flags` section of your `bsconfig.json`
 
-### GRAPHQL_PPX_APOLLO_MODE
+```json
+"ppx-flags": [
+  ["@baransu/graphql_ppx_re/ppx", "-apollo-mode", "-schema=path/to/schema"]
+]
+```
+
+> requires bs-platform 5.2 or later
+
+### -apollo-mode
 
 Tells graphql_ppx to add `__typename` to every object in a query. Usefull in case of using `apollo-client`.
 
-### GRAPHQL_PPX_SCHEMA
+### -schema=path/to/your/graphql_schema.json
 
-By default graphql_ppx uses `graphql_schema.json` filed from your root directory. You can override it by providing env variable overriding it.
+By default graphql_ppx uses `graphql_schema.json` filed from your root directory. You can override it by providing custom path.
 
 # Supported platforms
 
